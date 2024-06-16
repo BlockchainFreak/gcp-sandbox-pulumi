@@ -1,0 +1,8 @@
+{
+    "name": "cloud-function-billing-killswitch",
+    "version": "1.0.0",
+    "dependencies": {
+        "google-auth-library": "^2.0.0",
+        "googleapis": "^52.0.0"
+    }
+}

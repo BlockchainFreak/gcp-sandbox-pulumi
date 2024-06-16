@@ -1,0 +1,8 @@
+name: gcp-intern-solution
+runtime: nodejs
+main: src/index.ts
+description: Managing Projects With Budget Alerts
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: ""

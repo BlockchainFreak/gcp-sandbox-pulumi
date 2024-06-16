@@ -1,0 +1,8 @@
+/bin/
+/node_modules/
+*.zip
+.secrets
+__pycache__
+pnpm-lock.yaml
+Pulumi.*.yaml
+src/members.ts
