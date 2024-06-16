@@ -1,4 +1,5 @@
 import * as pulumi from "@pulumi/pulumi";
+import * as random from "@pulumi/random";
 import * as gcp from "@pulumi/gcp";
 import { ProjectDetails } from "./types";
 
@@ -11,12 +12,13 @@ if (!process.env.GOOGLE_CLOUD_QUOTA_PROJECT) {
 
 const GCPConfig = new pulumi.Config("gcp");
 const masterProjectId = GCPConfig.require("project");
+const defaultRegion = GCPConfig.get("region") || "us-central1";
 
 const envConfig = new pulumi.Config("env");
 const billingAccountId = envConfig.require("billingAccountId");
 const organizationId = envConfig.require("organizationId");
 const updateFunctionFlag = envConfig.getBoolean("updateFunctionFlag");
-const FUNCTION_ZIP_PATH = "./function.zip";
+const FUNCTION_ZIP_PATH = "../function.zip";
 
 /**
  * The Sample project Data with budget alert and pubsub setup
@@ -41,6 +43,9 @@ const FUNCTION_ZIP_PATH = "./function.zip";
 //     },
 // ]
 
+// Create a random bucket suffix to avoid conflicts since bucket names are globally unique
+const randomBucketSuffix = new random.RandomUuid("random-bucket-suffix", {});
+
 const topic = new gcp.pubsub.Topic("budget-alerts", {
     name: "project-budget-alerts",
     project: masterProjectId,
@@ -50,9 +55,9 @@ const topic = new gcp.pubsub.Topic("budget-alerts", {
 });
 
 const bucketForKillswitchFunction = new gcp.storage.Bucket("killswitch-function-package", {
-    name: "killswitch-function-package",
+    name: pulumi.interpolate`sandbox-pulumi-${randomBucketSuffix.result}`,
     project: masterProjectId,
-    location: "us-central1",
+    location: defaultRegion,
 });
 
 const killswitchFunctionZip = new gcp.storage.BucketObject("killswitch-function-zip", {
@@ -176,7 +181,7 @@ const killswitchFunctionServiceAccount = new gcp.serviceaccount.Account("killswi
 const killswitchFunction = new gcp.cloudfunctions.Function("killswitch-function", {
     name: "billing-killswitch-function",
     runtime: "nodejs18",
-    region: "us-central1",
+    region: defaultRegion,
     serviceAccountEmail: killswitchFunctionServiceAccount.email,
     sourceArchiveBucket: bucketForKillswitchFunction.name,
     sourceArchiveObject: killswitchFunctionZip.name,
