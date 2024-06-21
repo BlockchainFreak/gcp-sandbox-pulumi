@@ -49,6 +49,7 @@ const _setAuthCredential = () => {
         scopes: [
             'https://www.googleapis.com/auth/cloud-billing',
             'https://www.googleapis.com/auth/cloud-platform',
+            'https://www.googleapis.com/auth/compute.readonly',
         ],
     });
 

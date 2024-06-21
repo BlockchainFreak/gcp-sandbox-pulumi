@@ -173,6 +173,24 @@ const killswitchFunctionServiceAccount = new gcp.serviceaccount.Account("killswi
     displayName: "Function Service Account For Billing KillSwitch",
 });
 
+new gcp.projects.IAMMember("killswitch-function-service-account-iam-user", {
+    project: masterProjectId,
+    role: "roles/iam.serviceAccountUser",
+    member: killswitchFunctionServiceAccount.member,
+});
+
+new gcp.projects.IAMMember("killswitch-function-service-account-iam-token", {
+    project: masterProjectId,
+    role: "roles/iam.serviceAccountTokenCreator",
+    member: killswitchFunctionServiceAccount.member,
+});
+
+new gcp.projects.IAMMember("killswitch-function-service-account-iam-compute-viewer", {
+    project: masterProjectId,
+    role: "roles/compute.viewer",
+    member: killswitchFunctionServiceAccount.member,
+});
+
 /**
  * The Cloud Function that will be triggered by the PubSub Topic
  * It will stop billing for the project associated with the budget alert

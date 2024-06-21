@@ -81,7 +81,7 @@ gcloud services enable cloudbilling.googleapis.com
 ### Compress the cloud-function directory
 
 ```bash
-cd killswitch-function
+cd killswitch-function \
 zip -r ../function.zip .
 ```
 
