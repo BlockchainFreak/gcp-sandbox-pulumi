@@ -5,39 +5,43 @@ const { GoogleAuth } = require('google-auth-library');
 const billing = google.cloudbilling('v1').projects;
 
 exports.stopBilling = async pubsubEvent => {
+    try {
+        console.log(pubsubEvent);
 
-    console.log(pubsubEvent);
+        const pubsubData = JSON.parse(
+            Buffer.from(pubsubEvent.data, 'base64').toString()
+        );
 
-    const pubsubData = JSON.parse(
-        Buffer.from(pubsubEvent.data, 'base64').toString()
-    );
+        const { costAmount, budgetAmount } = pubsubData;
+        const { budgetId } = pubsubEvent.attributes;
 
-    const { costAmount, budgetAmount } = pubsubData;
-    const { budgetId } = pubsubEvent.attributes;
+        const projectId = _getProjectIdFromBudgetId(budgetId);
 
-    const projectId = _getProjectIdFromBudgetId(budgetId);
+        if (costAmount <= budgetAmount) {
+            console.log("No action necessary.");
+            return `No action necessary. (Current cost: ${pubsubData.costAmount})`;
+        }
 
-    if (costAmount <= budgetAmount) {
-        console.log("No action necessary.");
-        return `No action necessary. (Current cost: ${pubsubData.costAmount})`;
-    }
+        if (!projectId) {
+            console.log("no project specified");
+            return 'No project specified';
+        }
 
-    if (!projectId) {
-        console.log("no project specified");
-        return 'No project specified';
-    }
+        _setAuthCredential();
 
-    _setAuthCredential();
+        const projectName = `projects/${projectId}`;
 
-    const projectName = `projects/${projectId}`;
-
-    const billingEnabled = await _isBillingEnabled(projectName);
-    if (billingEnabled) {
-        console.log("disabling billing");
-        return _disableBillingForProject(projectName);
-    } else {
-        console.log("billing already disabled");
-        return 'Billing already disabled';
+        const billingEnabled = await _isBillingEnabled(projectName);
+        if (billingEnabled) {
+            console.log("disabling billing");
+            return _disableBillingForProject(projectName);
+        } else {
+            console.log("billing already disabled");
+            return 'Billing already disabled';
+        }
+    } catch (e) {
+        console.error(e);
+        return "Exit With Unexpected Error"
     }
 };
 
@@ -49,7 +53,6 @@ const _setAuthCredential = () => {
         scopes: [
             'https://www.googleapis.com/auth/cloud-billing',
             'https://www.googleapis.com/auth/cloud-platform',
-            'https://www.googleapis.com/auth/compute.readonly',
         ],
     });
 
@@ -73,7 +76,7 @@ const _isBillingEnabled = async projectName => {
         return res.data.billingEnabled;
     } catch (e) {
         console.log(
-            'Unable to determine if billing is enabled on specified project, assuming billing is enabled'
+            'Unable to determine if billing is enabled on specified project, assuming billing is disabled.'
         );
         return true;
     }
@@ -85,14 +88,19 @@ const _isBillingEnabled = async projectName => {
  * @return {string} Text containing response from disabling billing
  */
 const _disableBillingForProject = async projectName => {
-    const res = await billing.updateBillingInfo({
-        name: projectName,
-        resource: {
-            billingAccountName: ''
-        }, // Disable billing
-    });
-    console.log(res);
-    return `Billing disabled: ${JSON.stringify(res.data)}`;
+    try {
+        const res = await billing.updateBillingInfo({
+            name: projectName,
+            resource: {
+                billingAccountName: ''
+            }, // Disable billing
+        });
+        console.log(res);
+        return `Billing disabled: ${JSON.stringify(res.data)}`;
+    } catch (e) {
+        console.error('Error disabling billing');
+        return 'Error disabling billing';
+    }
 };
 
 /**

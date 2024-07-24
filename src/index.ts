@@ -17,6 +17,7 @@ const defaultRegion = GCPConfig.get("region") || "us-central1";
 const envConfig = new pulumi.Config("env");
 const billingAccountId = envConfig.require("billingAccountId");
 const organizationId = envConfig.require("organizationId");
+const sandboxFolderName = envConfig.get("sandboxFolderName") || "sandbox";
 const updateFunctionFlag = envConfig.getBoolean("updateFunctionFlag");
 const FUNCTION_ZIP_PATH = "../function.zip";
 
@@ -60,6 +61,12 @@ const bucketForKillswitchFunction = new gcp.storage.Bucket("killswitch-function-
     location: defaultRegion,
 });
 
+// create a folder for organizing the projects
+const folder = new gcp.organizations.Folder("projects-folder", {
+    displayName: sandboxFolderName,
+    parent: `organizations/${organizationId}`,
+})
+
 const killswitchFunctionZip = new gcp.storage.BucketObject("killswitch-function-zip", {
     bucket: bucketForKillswitchFunction.name,
     name: "killswitch-function-package.zip",
@@ -85,7 +92,8 @@ function createProjectWithBudgetAlert(projectDetails: ProjectDetails) {
     const project = new gcp.organizations.Project(projectDisplayName, {
         name: projectDisplayName,
         projectId: projectId,
-        orgId: organizationId,
+        // orgId: organizationId,
+        folderId: folder.id,
     });
 
     // Associate Billing Account with Project
@@ -182,12 +190,6 @@ new gcp.projects.IAMMember("killswitch-function-service-account-iam-user", {
 new gcp.projects.IAMMember("killswitch-function-service-account-iam-token", {
     project: masterProjectId,
     role: "roles/iam.serviceAccountTokenCreator",
-    member: killswitchFunctionServiceAccount.member,
-});
-
-new gcp.projects.IAMMember("killswitch-function-service-account-iam-compute-viewer", {
-    project: masterProjectId,
-    role: "roles/compute.viewer",
     member: killswitchFunctionServiceAccount.member,
 });
 
